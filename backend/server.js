@@ -1,5 +1,7 @@
 const express = require("express");
 
+console.log("🔥 NEW MAUSAM BACKEND VERSION LOADED");
+
 const cors = require("cors");
 
 const getPersonalizedInsights = require("./personalization/personalization");
