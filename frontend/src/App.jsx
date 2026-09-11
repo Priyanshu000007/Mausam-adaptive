@@ -1,9 +1,7 @@
-```jsx
 import { useEffect, useState } from "react";
 import "./App.css";
 
-const BACKEND_URL =
-  "https://mausam-adaptive.onrender.com";
+const BACKEND_URL = "https://mausam-adaptive.onrender.com";
 
 function App() {
   const [persona, setPersona] = useState("commuter");
@@ -13,21 +11,14 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [locationError, setLocationError] = useState("");
 
-  // ==========================================
-  // GET USER LOCATION
-  // ==========================================
-
+  // Get user's location
   useEffect(() => {
     if (!navigator.geolocation) {
-      setLocationError(
-        "Location services are not supported. Using New Delhi."
-      );
-
+      setLocationError("Location services are not supported.");
       setLocation({
         lat: 28.6139,
         lon: 77.209,
       });
-
       return;
     }
 
@@ -47,20 +38,11 @@ function App() {
           lat: 28.6139,
           lon: 77.209,
         });
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 300000,
       }
     );
   }, []);
 
-
-  // ==========================================
-  // GET LOCATION NAME
-  // ==========================================
-
+  // Get location name
   useEffect(() => {
     if (!location) return;
 
@@ -79,51 +61,36 @@ function App() {
         const city =
           result.city ||
           result.locality ||
+          result.principalSubdivision ||
           "Unknown location";
 
-        const state =
-          result.principalSubdivision || "";
+        const state = result.principalSubdivision || "";
 
         setLocationName(
           state && city !== state
             ? `${city}, ${state}`
             : city
         );
-
       } catch (error) {
-
-        console.error(
-          "Location lookup error:",
-          error
-        );
-
+        console.error("Location error:", error);
         setLocationName("Location detected");
       }
     };
 
     getLocationName();
-
   }, [location]);
 
-
-  // ==========================================
-  // GET WEATHER + PERSONALIZED INSIGHTS
-  // ==========================================
-
+  // Fetch weather directly from Open-Meteo
+  // Then send weather data to Render for personalization
   useEffect(() => {
     if (!location) return;
 
     const fetchWeather = async () => {
-
       setLoading(true);
+      setData(null);
 
       try {
-
-        // --------------------------------------
-        // STEP 1: GET WEATHER DIRECTLY FROM
-        // OPEN-METEO
-        // --------------------------------------
-
+        // STEP 1: Get weather directly from Open-Meteo
         const weatherUrl =
           `https://api.open-meteo.com/v1/forecast?` +
           `latitude=${location.lat}` +
@@ -133,12 +100,9 @@ function App() {
           `&daily=precipitation_probability_max,sunrise,sunset` +
           `&timezone=auto`;
 
-        console.log(
-          "🌦️ Fetching weather directly from Open-Meteo..."
-        );
+        console.log("Fetching weather from Open-Meteo...");
 
-        const weatherResponse =
-          await fetch(weatherUrl);
+        const weatherResponse = await fetch(weatherUrl);
 
         if (!weatherResponse.ok) {
           throw new Error(
@@ -146,219 +110,104 @@ function App() {
           );
         }
 
-        const weatherData =
-          await weatherResponse.json();
+        const weatherData = await weatherResponse.json();
 
+        console.log("Weather data received:", weatherData);
 
-        // --------------------------------------
-        // STEP 2: SEND WEATHER TO RENDER
-        // FOR PERSONALIZATION
-        // --------------------------------------
+        // STEP 2: Send weather data to Render
+        console.log("Sending weather data to backend...");
 
-        console.log(
-          "🧠 Sending weather to MAUSAM backend..."
+        const backendResponse = await fetch(
+          `${BACKEND_URL}/api/personalized?persona=${persona}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(weatherData),
+          }
         );
 
-        const personalizedResponse =
-          await fetch(
-            `${BACKEND_URL}/api/personalized?persona=${persona}`,
-            {
-              method: "POST",
-
-              headers: {
-                "Content-Type": "application/json",
-              },
-
-              body: JSON.stringify(weatherData),
-            }
-          );
-
-
-        if (!personalizedResponse.ok) {
+        if (!backendResponse.ok) {
           throw new Error(
-            `Backend request failed: ${personalizedResponse.status}`
+            `Backend request failed: ${backendResponse.status}`
           );
         }
 
+        const result = await backendResponse.json();
 
-        // --------------------------------------
-        // STEP 3: GET PERSONALIZED RESPONSE
-        // --------------------------------------
-
-        const result =
-          await personalizedResponse.json();
-
-        console.log(
-          "✅ MAUSAM response:",
-          result
-        );
+        console.log("Personalized data received:", result);
 
         setData(result);
-
       } catch (error) {
-
-        console.error(
-          "❌ Weather error:",
-          error
-        );
-
+        console.error("Weather error:", error);
         setData(null);
-
       } finally {
-
         setLoading(false);
-
       }
     };
 
     fetchWeather();
-
   }, [persona, location]);
 
-
-  // ==========================================
-  // PERSONA TITLE
-  // ==========================================
-
   const getPersonaTitle = () => {
-
-    if (persona === "commuter") {
-      return "Your commute";
-    }
-
-    if (persona === "agriculture") {
-      return "Your garden & crops";
-    }
-
-    if (persona === "traveller") {
-      return "Your travel";
-    }
-
+    if (persona === "commuter") return "Your commute";
+    if (persona === "agriculture") return "Your garden & crops";
+    if (persona === "traveller") return "Your travel";
     return "Your weather";
   };
 
-
-  // ==========================================
-  // INSIGHT ICON
-  // ==========================================
-
   const getInsightIcon = (type) => {
-
-    if (type === "rain") {
-      return "🌧️";
-    }
-
-    if (type === "wind") {
-      return "💨";
-    }
-
-    if (type === "heat") {
-      return "🌡️";
-    }
-
-    if (type === "humidity") {
-      return "💧";
-    }
-
-    if (type === "irrigation") {
-      return "💦";
-    }
-
-    if (type === "uv") {
-      return "☀️";
-    }
-
-    if (type === "good") {
-      return "✅";
-    }
-
-    return "🌦️";
+    if (type === "rain") return "🌧️";
+    if (type === "wind") return "💨";
+    if (type === "heat") return "🌡️";
+    if (type === "humidity") return "💧";
+    if (type === "irrigation") return "💦";
+    if (type === "uv") return "☀️";
+    if (type === "good") return "✅";
+    if (type === "normal") return "✅";
+    return "ℹ️";
   };
 
-
-  // ==========================================
-  // WEATHER ICON
-  // ==========================================
-
   const getWeatherIcon = () => {
-
-    if (!data?.weather) {
-      return "🌦️";
-    }
-
     const rain =
-      Number(data.weather.precipitation) || 0;
+      data?.weather?.precipitation ?? 0;
 
-    const probability =
-      Number(
-        data.hourly
-          ?.precipitation_probability?.[0]
-      ) || 0;
+    const rainProbability =
+      data?.hourly?.precipitation_probability?.[0] ?? 0;
 
-    if (rain > 0) {
+    if (rain > 0 || rainProbability >= 60) {
       return "🌧️";
-    }
-
-    if (probability >= 60) {
-      return "🌦️";
     }
 
     return "☀️";
   };
 
-
-  // ==========================================
-  // RENDER
-  // ==========================================
-
   return (
     <div className="app">
 
       {/* HEADER */}
-
       <header className="header">
-
         <div>
-
           <h1>🌦️ MAUSAM</h1>
-
-          <p>
-            Adaptive Weather Intelligence
-          </p>
-
+          <p>Adaptive Weather Intelligence</p>
         </div>
 
         <div className="location">
-
-          📍{" "}
-          {locationName ||
-            "Detecting location..."}
-
+          📍 {locationName || "Detecting location..."}
         </div>
-
       </header>
 
-
       {/* LOCATION ERROR */}
-
       {locationError && (
-
         <div className="notice">
-
           ⚠️ {locationError}
-
         </div>
-
       )}
 
-
-      {/* PERSONA SELECTOR */}
-
+      {/* PERSONA SELECTION */}
       <section className="persona-section">
-
-        <h2>
-          What matters to you?
-        </h2>
+        <h2>What matters to you?</h2>
 
         <div className="persona-buttons">
 
@@ -373,11 +222,8 @@ function App() {
             }
           >
             🚗
-            <span>
-              Commuter
-            </span>
+            <span>Commuter</span>
           </button>
-
 
           <button
             className={
@@ -390,11 +236,8 @@ function App() {
             }
           >
             🌱
-            <span>
-              Agriculture
-            </span>
+            <span>Agriculture</span>
           </button>
-
 
           <button
             className={
@@ -407,24 +250,17 @@ function App() {
             }
           >
             ✈️
-            <span>
-              Traveller
-            </span>
+            <span>Traveller</span>
           </button>
 
         </div>
-
       </section>
 
-
-      {/* WEATHER */}
-
+      {/* LOADING */}
       {loading ? (
 
         <div className="loading">
-
           🌦️ Loading your weather...
-
         </div>
 
       ) : data ? (
@@ -432,7 +268,6 @@ function App() {
         <>
 
           {/* CURRENT WEATHER */}
-
           <section className="weather-card">
 
             <div className="weather-main">
@@ -444,147 +279,83 @@ function App() {
                 </p>
 
                 <h2>
-                  {data.weather
-                    ?.temperature_2m ?? "—"}°C
+                  {data.weather?.temperature_2m ?? "—"}°C
                 </h2>
 
                 <p>
-                  📍{" "}
-                  {locationName ||
-                    "Your location"}
+                  📍 {locationName || "Your location"}
                 </p>
 
               </div>
 
-
               <div className="weather-icon">
-
                 {getWeatherIcon()}
-
               </div>
 
             </div>
 
-
             {/* WEATHER STATS */}
-
             <div className="weather-stats">
 
               <div>
-
                 <span>💧</span>
-
-                <p>
-                  Humidity
-                </p>
+                <p>Humidity</p>
 
                 <strong>
-                  {data.weather
-                    ?.relative_humidity_2m ??
-                    "—"}%
+                  {data.weather?.relative_humidity_2m ?? "—"}%
                 </strong>
-
               </div>
 
-
               <div>
-
                 <span>🌧️</span>
-
-                <p>
-                  Rainfall
-                </p>
+                <p>Rainfall</p>
 
                 <strong>
-                  {data.weather
-                    ?.precipitation ??
-                    "—"} mm
+                  {data.weather?.precipitation ?? "—"} mm
                 </strong>
-
               </div>
-
 
               <div>
-
                 <span>💨</span>
-
-                <p>
-                  Wind
-                </p>
+                <p>Wind</p>
 
                 <strong>
-                  {data.weather
-                    ?.wind_speed_10m ??
-                    "—"} km/h
+                  {data.weather?.wind_speed_10m ?? "—"} km/h
                 </strong>
-
               </div>
-
-
-              {/* AGRICULTURE */}
 
               {persona === "agriculture" && (
                 <>
 
                   <div>
-
                     <span>☀️</span>
-
-                    <p>
-                      UV Index
-                    </p>
+                    <p>UV Index</p>
 
                     <strong>
-                      {data.weather
-                        ?.uv_index ??
-                        "—"}
+                      {data.weather?.uv_index ?? "—"}
                     </strong>
-
                   </div>
 
-
                   <div>
-
                     <span>🌱</span>
-
-                    <p>
-                      Soil Moisture
-                    </p>
+                    <p>Soil Moisture</p>
 
                     <strong>
-
-                      {data.hourly
-                        ?.soil_moisture_0_to_7cm?.[0] != null
+                      {data.hourly?.soil_moisture_0_to_7cm?.[0] != null
                         ? `${(
-                            data.hourly
-                              .soil_moisture_0_to_7cm[0] *
-                            100
+                            data.hourly.soil_moisture_0_to_7cm[0] * 100
                           ).toFixed(1)}%`
                         : "—"}
-
                     </strong>
-
                   </div>
 
-
                   <div>
-
                     <span>🌡️</span>
-
-                    <p>
-                      Soil Temperature
-                    </p>
+                    <p>Soil Temperature</p>
 
                     <strong>
-
-                      {data.hourly
-                        ?.soil_temperature_0cm?.[0] != null
-                        ? `${data.hourly
-                            .soil_temperature_0cm[0]}°C`
-                        : "—"}
-
+                      {data.hourly?.soil_temperature_0cm?.[0] ?? "—"}°C
                     </strong>
-
                   </div>
 
                 </>
@@ -594,9 +365,7 @@ function App() {
 
           </section>
 
-
           {/* PERSONALIZED INSIGHTS */}
-
           <section className="insights">
 
             <div className="section-heading">
@@ -615,7 +384,6 @@ function App() {
 
             </div>
 
-
             {data.insights &&
             data.insights.length > 0 ? (
 
@@ -630,11 +398,9 @@ function App() {
                   >
 
                     <div className="insight-icon">
-
                       {getInsightIcon(
                         insight.type
                       )}
-
                     </div>
 
                     <div>
@@ -681,9 +447,7 @@ function App() {
 
           </section>
 
-
           {/* HOURLY FORECAST */}
-
           <section className="hourly-section">
 
             <div className="section-heading">
@@ -702,7 +466,6 @@ function App() {
 
             </div>
 
-
             <div className="hourly-container">
 
               {data.hourly?.time
@@ -710,9 +473,7 @@ function App() {
                 .map((time, index) => {
 
                   const hour =
-                    new Date(
-                      time
-                    ).toLocaleTimeString(
+                    new Date(time).toLocaleTimeString(
                       [],
                       {
                         hour: "numeric",
@@ -720,24 +481,13 @@ function App() {
                       }
                     );
 
+                  const temperature =
+                    data.hourly
+                      ?.temperature_2m?.[index];
 
                   const rainProbability =
                     data.hourly
-                      ?.precipitation_probability
-                      ?.[index] ?? 0;
-
-
-                  const temperature =
-                    data.hourly
-                      ?.temperature_2m
-                      ?.[index];
-
-
-                  const soilMoisture =
-                    data.hourly
-                      ?.soil_moisture_0_to_7cm
-                      ?.[index];
-
+                      ?.precipitation_probability?.[index] ?? 0;
 
                   return (
 
@@ -750,46 +500,19 @@ function App() {
                         {hour}
                       </strong>
 
-
                       <div className="hour-icon">
-
-                        {rainProbability >= 60
+                        {rainProbability > 50
                           ? "🌧️"
-                          : rainProbability >= 30
-                          ? "🌦️"
                           : "☀️"}
-
                       </div>
 
-
-                      {temperature != null && (
-
-                        <span>
-                          🌡️{" "}
-                          {temperature}°C
-                        </span>
-
-                      )}
-
+                      <strong>
+                        {temperature ?? "—"}°C
+                      </strong>
 
                       <span>
-                        🌧️{" "}
-                        {rainProbability}%
+                        🌧️ {rainProbability}%
                       </span>
-
-
-                      {persona === "agriculture" &&
-                        soilMoisture != null && (
-
-                          <span>
-                            🌱{" "}
-                            {(
-                              soilMoisture * 100
-                            ).toFixed(1)}
-                            %
-                          </span>
-
-                        )}
 
                     </div>
 
@@ -812,8 +535,8 @@ function App() {
           <br />
 
           <small>
-            Please check your internet
-            connection and try again.
+            Please refresh the page and allow
+            location access.
           </small>
 
         </div>
@@ -825,4 +548,3 @@ function App() {
 }
 
 export default App;
-```
