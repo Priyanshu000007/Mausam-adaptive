@@ -3,10 +3,8 @@ function getPersonalizedInsights(persona, weather) {
 
   const current = weather.current || {};
   const hourly = weather.hourly || {};
-  const daily = weather.daily || {};
 
   const temperature = current.temperature_2m;
-  const humidity = current.relative_humidity_2m;
   const precipitation = current.precipitation;
   const wind = current.wind_speed_10m;
   const uv = current.uv_index;
@@ -17,17 +15,8 @@ function getPersonalizedInsights(persona, weather) {
   const soilMoisture =
     hourly.soil_moisture_0_to_7cm?.[0] ?? null;
 
-  const soilTemperature =
-    hourly.soil_temperature_0cm?.[0] ?? null;
-
-
-  // ==========================================
-  // AGRICULTURE / GARDENING
-  // ==========================================
-
   if (persona === "agriculture") {
 
-    // Rain happening now
     if (precipitation > 0) {
       insights.push({
         type: "rain",
@@ -36,10 +25,8 @@ function getPersonalizedInsights(persona, weather) {
         message:
           "Rain is occurring. Consider reviewing your irrigation schedule."
       });
-    }
 
-    // Rain expected soon
-    else if (rainProbability >= 60) {
+    } else if (rainProbability >= 60) {
       insights.push({
         type: "rain",
         priority: "high",
@@ -49,8 +36,10 @@ function getPersonalizedInsights(persona, weather) {
       });
     }
 
-    // Low soil moisture
-    if (soilMoisture !== null && soilMoisture < 0.20) {
+    if (
+      soilMoisture !== null &&
+      soilMoisture < 0.20
+    ) {
       insights.push({
         type: "irrigation",
         priority: "high",
@@ -58,10 +47,11 @@ function getPersonalizedInsights(persona, weather) {
         message:
           "Soil moisture appears low. Consider checking your crops and irrigation needs."
       });
-    }
 
-    // High soil moisture
-    else if (soilMoisture !== null && soilMoisture > 0.40) {
+    } else if (
+      soilMoisture !== null &&
+      soilMoisture > 0.40
+    ) {
       insights.push({
         type: "irrigation",
         priority: "medium",
@@ -71,7 +61,6 @@ function getPersonalizedInsights(persona, weather) {
       });
     }
 
-    // High temperature
     if (temperature >= 35) {
       insights.push({
         type: "heat",
@@ -82,7 +71,6 @@ function getPersonalizedInsights(persona, weather) {
       });
     }
 
-    // Strong wind
     if (wind >= 30) {
       insights.push({
         type: "wind",
@@ -93,7 +81,6 @@ function getPersonalizedInsights(persona, weather) {
       });
     }
 
-    // UV
     if (uv >= 8) {
       insights.push({
         type: "uv",
@@ -104,7 +91,6 @@ function getPersonalizedInsights(persona, weather) {
       });
     }
 
-    // Good general conditions
     if (insights.length === 0) {
       insights.push({
         type: "good",
@@ -114,16 +100,13 @@ function getPersonalizedInsights(persona, weather) {
           "Current weather conditions look relatively favorable for your garden and crops."
       });
     }
-  }
 
+  } else if (persona === "commuter") {
 
-  // ==========================================
-  // COMMUTER
-  // ==========================================
-
-  else if (persona === "commuter") {
-
-    if (precipitation > 0 || rainProbability >= 60) {
+    if (
+      precipitation > 0 ||
+      rainProbability >= 60
+    ) {
       insights.push({
         type: "rain",
         priority: "high",
@@ -162,16 +145,13 @@ function getPersonalizedInsights(persona, weather) {
           "Current weather conditions look favorable for your commute."
       });
     }
-  }
 
+  } else if (persona === "traveller") {
 
-  // ==========================================
-  // TRAVELLER
-  // ==========================================
-
-  else if (persona === "traveller") {
-
-    if (precipitation > 0 || rainProbability >= 60) {
+    if (
+      precipitation > 0 ||
+      rainProbability >= 60
+    ) {
       insights.push({
         type: "rain",
         priority: "high",
@@ -212,13 +192,7 @@ function getPersonalizedInsights(persona, weather) {
     }
   }
 
-
-  // ==========================================
-  // RETURN RESULTS
-  // ==========================================
-
   return insights;
 }
-
 
 module.exports = getPersonalizedInsights;
