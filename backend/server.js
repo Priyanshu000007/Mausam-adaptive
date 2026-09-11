@@ -1,15 +1,13 @@
 const express = require("express");
+const cors = require("cors");
 
 console.log("🔥 NEW MAUSAM BACKEND VERSION LOADED");
-
-const cors = require("cors");
 
 const getPersonalizedInsights = require("./personalization/personalization");
 
 const app = express();
 
 app.use(cors());
-
 app.use(express.json());
 
 
@@ -18,13 +16,9 @@ app.use(express.json());
 // ------------------------------------
 
 app.get("/", (req, res) => {
-
   res.json({
-
     message: "MAUSAM Adaptive backend is running!"
-
   });
-
 });
 
 
@@ -33,11 +27,8 @@ app.get("/", (req, res) => {
 // ------------------------------------
 
 app.get("/api/weather", async (req, res) => {
-
   try {
-
     const latitude = req.query.lat || 28.6139;
-
     const longitude = req.query.lon || 77.2090;
 
     const url =
@@ -52,9 +43,7 @@ app.get("/api/weather", async (req, res) => {
     const response = await fetch(url);
 
     if (!response.ok) {
-
-      throw new Error("Weather API request failed");
-
+      throw new Error(`Weather API request failed: ${response.status}`);
     }
 
     const data = await response.json();
@@ -62,17 +51,13 @@ app.get("/api/weather", async (req, res) => {
     res.json(data);
 
   } catch (error) {
-
     console.error("Weather API error:", error);
 
     res.status(500).json({
-
-      error: "Unable to fetch weather data"
-
+      error: "Unable to fetch weather data",
+      details: error.message
     });
-
   }
-
 });
 
 
@@ -81,16 +66,11 @@ app.get("/api/weather", async (req, res) => {
 // ------------------------------------
 
 app.get("/api/personalized", async (req, res) => {
-
   try {
 
-    // Get persona from frontend
     const persona = req.query.persona || "commuter";
 
-    // Get location from frontend
-    // Default = Delhi
     const latitude = req.query.lat || 28.6139;
-
     const longitude = req.query.lon || 77.2090;
 
 
@@ -102,49 +82,45 @@ app.get("/api/personalized", async (req, res) => {
       `https://api.open-meteo.com/v1/forecast?` +
       `latitude=${latitude}` +
       `&longitude=${longitude}` +
-
-      // Current weather
       `&current=` +
       `temperature_2m,` +
       `relative_humidity_2m,` +
       `precipitation,` +
       `wind_speed_10m,` +
       `uv_index` +
-
-      // Hourly weather
       `&hourly=` +
       `precipitation_probability,` +
       `soil_moisture_0_to_7cm,` +
       `soil_temperature_0cm` +
-
-      // Daily weather
       `&daily=` +
       `precipitation_probability_max,` +
       `sunrise,` +
       `sunset` +
-
-      // Automatically use local timezone
       `&timezone=auto`;
 
 
     // --------------------------------
-    // FETCH WEATHER DATA
+    // FETCH WEATHER
     // --------------------------------
+
+    console.log("🌦️ Requesting weather from Open-Meteo...");
 
     const response = await fetch(url);
 
     if (!response.ok) {
-
-      throw new Error("Weather API request failed");
-
+      throw new Error(
+        `Open-Meteo request failed: ${response.status}`
+      );
     }
 
     const weather = await response.json();
 
 
     // --------------------------------
-    // GENERATE PERSONALIZED INSIGHTS
+    // PERSONALIZATION
     // --------------------------------
+
+    console.log(`🧠 Generating insights for: ${persona}`);
 
     const insights = getPersonalizedInsights(
       persona,
@@ -153,47 +129,42 @@ app.get("/api/personalized", async (req, res) => {
 
 
     // --------------------------------
-    // SEND DATA TO FRONTEND
+    // SEND RESPONSE
     // --------------------------------
 
     res.json({
-
-      // Selected persona
       persona: persona,
 
-      // Current weather
       weather: weather.current,
 
-      // Hourly forecast
       hourly: weather.hourly,
 
-      // Daily forecast
       daily: weather.daily,
 
-      // Personalized recommendations
       insights: insights
-
     });
 
   } catch (error) {
 
-  console.error("Personalized weather error:", error);
+    console.error("❌ Personalized weather error:", error);
 
-  res.status(500).json({
-    error: "Unable to generate personalized weather information",
-    details: error.message
-  });
+    res.status(500).json({
+      error: "Unable to generate personalized weather information",
+      details: error.message
+    });
+  }
+});
 
-}
 
 // ------------------------------------
 // START SERVER
 // ------------------------------------
 
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
-
+  console.log(`🚀 Backend running on port ${PORT}`);
+});
   console.log(`Backend running on http://localhost:${PORT}`);
 
 });
