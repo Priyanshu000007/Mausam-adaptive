@@ -8,16 +8,16 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-console.log("MAUSAM BACKEND VERSION LOADED");
+console.log("MAUSAM backend loaded");
 
-// HOME / TEST
+// Test route
 app.get("/", (req, res) => {
   res.json({
     message: "MAUSAM Adaptive backend is running!"
   });
 });
 
-// PERSONALIZED WEATHER API
+// Personalized weather endpoint
 app.post("/api/personalized", (req, res) => {
   try {
     const persona = req.query.persona || "commuter";
@@ -43,7 +43,9 @@ app.post("/api/personalized", (req, res) => {
       daily: weather.daily || {},
       insights: insights
     });
+
   } catch (error) {
+
     console.error(
       "Personalized weather error:",
       error
