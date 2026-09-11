@@ -83,8 +83,8 @@ function App() {
 
       try {
         const response = await fetch(
-          `http://localhost:5000/api/personalized?persona=${persona}&lat=${location.lat}&lon=${location.lon}`
-        );
+  `https://mausam-adaptive.onrender.com/api/personalized?persona=${persona}&lat=${location.lat}&lon=${location.lon}`
+);
 
         if (!response.ok) {
           throw new Error("Weather request failed");
