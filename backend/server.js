@@ -10,6 +10,14 @@ app.use(express.json());
 
 console.log("🔥 NEW MAUSAM BACKEND VERSION LOADED");
 
+// ------------------------------------
+// WEATHER CACHE
+// ------------------------------------
+
+let weatherCache = {};
+
+const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
+
 
 // ------------------------------------
 // HOME / TEST ROUTE
@@ -31,6 +39,19 @@ app.get("/api/weather", async (req, res) => {
     const latitude = req.query.lat || 28.6139;
     const longitude = req.query.lon || 77.2090;
 
+    const cacheKey = `${latitude},${longitude}`;
+
+    // Check cache
+    if (
+      weatherCache[cacheKey] &&
+      Date.now() - weatherCache[cacheKey].timestamp < CACHE_DURATION
+    ) {
+      console.log("⚡ Using cached weather data");
+
+      return res.json(weatherCache[cacheKey].data);
+    }
+
+    // Open-Meteo URL
     const url =
       `https://api.open-meteo.com/v1/forecast?` +
       `latitude=${latitude}` +
@@ -40,18 +61,28 @@ app.get("/api/weather", async (req, res) => {
       `&daily=precipitation_probability_max,sunrise,sunset` +
       `&timezone=auto`;
 
+    console.log("🌦️ Fetching fresh weather data...");
+
     const response = await fetch(url);
 
     if (!response.ok) {
-      throw new Error(`Weather API request failed: ${response.status}`);
+      throw new Error(
+        `Open-Meteo request failed: ${response.status}`
+      );
     }
 
     const data = await response.json();
 
+    // Save in cache
+    weatherCache[cacheKey] = {
+      data: data,
+      timestamp: Date.now()
+    };
+
     res.json(data);
 
   } catch (error) {
-    console.error("Weather API error:", error);
+    console.error("❌ Weather API error:", error);
 
     res.status(500).json({
       error: "Unable to fetch weather data",
@@ -67,54 +98,121 @@ app.get("/api/weather", async (req, res) => {
 
 app.get("/api/personalized", async (req, res) => {
   try {
+
+    // Persona
     const persona = req.query.persona || "commuter";
 
+    // Location
     const latitude = req.query.lat || 28.6139;
     const longitude = req.query.lon || 77.2090;
 
-    const url =
-      `https://api.open-meteo.com/v1/forecast?` +
-      `latitude=${latitude}` +
-      `&longitude=${longitude}` +
-      `&current=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m,uv_index` +
-      `&hourly=precipitation_probability,soil_moisture_0_to_7cm,soil_temperature_0cm` +
-      `&daily=precipitation_probability_max,sunrise,sunset` +
-      `&timezone=auto`;
+    const cacheKey = `${latitude},${longitude}`;
 
-    console.log("🌦️ Requesting weather from Open-Meteo...");
+    let weather;
 
-    const response = await fetch(url);
 
-    if (!response.ok) {
-      throw new Error(`Open-Meteo request failed: ${response.status}`);
+    // --------------------------------
+    // CHECK WEATHER CACHE
+    // --------------------------------
+
+    if (
+      weatherCache[cacheKey] &&
+      Date.now() - weatherCache[cacheKey].timestamp < CACHE_DURATION
+    ) {
+
+      console.log("⚡ Using cached weather data");
+
+      weather = weatherCache[cacheKey].data;
+
+    } else {
+
+      // --------------------------------
+      // FETCH WEATHER FROM OPEN-METEO
+      // --------------------------------
+
+      const url =
+        `https://api.open-meteo.com/v1/forecast?` +
+        `latitude=${latitude}` +
+        `&longitude=${longitude}` +
+        `&current=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m,uv_index` +
+        `&hourly=precipitation_probability,soil_moisture_0_to_7cm,soil_temperature_0cm` +
+        `&daily=precipitation_probability_max,sunrise,sunset` +
+        `&timezone=auto`;
+
+      console.log("🌦️ Fetching fresh weather from Open-Meteo...");
+
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new Error(
+          `Open-Meteo request failed: ${response.status}`
+        );
+      }
+
+      weather = await response.json();
+
+
+      // --------------------------------
+      // SAVE WEATHER TO CACHE
+      // --------------------------------
+
+      weatherCache[cacheKey] = {
+        data: weather,
+        timestamp: Date.now()
+      };
+
+      console.log("💾 Weather data saved to cache");
     }
 
-    const weather = await response.json();
 
-    console.log(`🧠 Generating insights for: ${persona}`);
+    // --------------------------------
+    // GENERATE PERSONALIZED INSIGHTS
+    // --------------------------------
+
+    console.log(
+      `🧠 Generating insights for: ${persona}`
+    );
 
     const insights = getPersonalizedInsights(
       persona,
       weather
     );
 
+
+    // --------------------------------
+    // SEND RESPONSE
+    // --------------------------------
+
     res.json({
+
       persona: persona,
+
       weather: weather.current,
+
       hourly: weather.hourly,
+
       daily: weather.daily,
+
       insights: insights
+
     });
 
   } catch (error) {
-  console.error("❌ Personalized weather error:", error);
 
-  res.status(500).json({
-    error: "Unable to generate personalized weather information",
-    details: String(error),
-    stack: error.stack
-  });
-}
+    console.error(
+      "❌ Personalized weather error:",
+      error
+    );
+
+    res.status(500).json({
+
+      error:
+        "Unable to generate personalized weather information",
+
+      details: error.message
+
+    });
+  }
 });
 
 
@@ -125,5 +223,9 @@ app.get("/api/personalized", async (req, res) => {
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
-  console.log(`🚀 Backend running on port ${PORT}`);
+
+  console.log(
+    `🚀 MAUSAM backend running on port ${PORT}`
+  );
+
 });
