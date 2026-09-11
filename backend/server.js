@@ -107,13 +107,14 @@ app.get("/api/personalized", async (req, res) => {
     });
 
   } catch (error) {
-    console.error("❌ Personalized weather error:", error);
+  console.error("❌ Personalized weather error:", error);
 
-    res.status(500).json({
-      error: "Unable to generate personalized weather information",
-      details: error.message
-    });
-  }
+  res.status(500).json({
+    error: "Unable to generate personalized weather information",
+    details: String(error),
+    stack: error.stack
+  });
+}
 });
 
 
